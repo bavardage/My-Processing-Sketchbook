@@ -9,14 +9,14 @@ void setup() {
   draw_once();
 }
 
-
-abstract class CAS { //CartesianAutonomousSystem
+class D {
+  public float f(float x, float y) {return 0.0; };
+}
+class CAS { //CartesianAutonomousSystem
   
   float x0, x1, y0, y1;
   float deltax, deltay;
-  
-  abstract float dx(float x, float y);
-  abstract float dy(float x,float y);
+  D dx, dy;
   
   PVector translate(float x, float y) { //graph to real
     return new PVector( width*(x-x0)/(x1-x0), height - height*(y-y0)/(y1-y0));
@@ -35,8 +35,8 @@ abstract class CAS { //CartesianAutonomousSystem
     trline(x,y,u,v,false);
   }
   
-  CAS(float x0i, float x1i, float y0i, float y1i) {
-    x0 = x0i; x1 = x1i; y0 = y0i; y1 = y1i;
+  CAS(float x0i, float x1i, float y0i, float y1i, D dxi, D dyi) {
+    x0 = x0i; x1 = x1i; y0 = y0i; y1 = y1i; dx = dxi; dy = dyi;
     deltax = (x1-x0)/30; deltay = (y1-y0)/30;
   }
   
@@ -47,31 +47,24 @@ abstract class CAS { //CartesianAutonomousSystem
     stroke(0,0,0,0.5);
     for(float x = x0; x < x1; x += deltax) {
     for(float y = y0; y < y1; y += deltay) {
-      trline(x,y, x+dx(x,y)/10, y+dy(x,y)/10, true);
+      trline(x,y, x+dx.f(x,y)/10, y+dy.f(x,y)/10, true);
     }}
     
   }
   
-  void do_euler_approx(float x, float y, float tmin, float tmax) {
+  void do_euler_approx(float x, float y, float tmax) {
      stroke(255,0,0,1);
      float step = 0.05;
-     PVector current_pos = new PVector(x,y); PVector new_pos = new PVector(x,y);
-     for(float t = 0; t > tmin; t -= step) {
-       println("t is " + t);
-       new_pos = PVector.sub(current_pos, 
-                             new PVector(step * dx(current_pos.x, current_pos.y), 
-                                         step * dy(current_pos.x, current_pos.y)));
-       trline(current_pos.x, current_pos.y, new_pos.x, new_pos.y);
-       current_pos = new_pos;
-     }
-     current_pos = new PVector(x,y); new_pos = new PVector(x,y);
-     for(float t = 0; t < tmax; t += step) {
-       println("t is " + t);
-       new_pos = PVector.add(current_pos, 
-                             new PVector(step * dx(current_pos.x, current_pos.y), 
-                                         step * dy(current_pos.x, current_pos.y)));
-       trline(current_pos.x, current_pos.y, new_pos.x, new_pos.y);
-       current_pos = new_pos;
+     //setup bounds - stop trying to approximate all the way to infinity...
+     float xmin = x0 - (x1-x0)*2; float xmax = x1 + (x1-x0)*2;
+     float ymin = y0 - (y1-y0)*2; float ymax = y1 + (y1-y0)*2;
+     PVector pos = new PVector(x,y); PVector new_pos = new PVector(x,y);
+     for(float t = 0; t < tmax && xmin < pos.x && pos.x < xmax && ymin < pos.y && pos.y < ymax; t += step) {
+       new_pos = PVector.add(pos, 
+                             new PVector(step * dx.f(pos.x, pos.y), 
+                                         step * dy.f(pos.x, pos.y)));
+       trline(pos.x, pos.y, new_pos.x, new_pos.y);
+       pos = new_pos;
      }
   }
   
@@ -79,36 +72,28 @@ abstract class CAS { //CartesianAutonomousSystem
 
 
 void draw_once() {  
-  /* //attractive critical point at 1/3,1/3  repulsive at origin
-  class Test extends CAS {
-    public float dx(float x,float y) { return x*(1 - 2*x - y); }
-    public float dy(float x,float y) { return y*(1 - x - 2*y); }
-    Test(float x0, float x1, float y0, float y1) { super(x0,x1,y0,y1); };
-  }
-  t = new Test(-0.1, 0.5, -0.1, 0.5); t.draw();
-  */
+   
+  //attractive critical point at 1/3,1/3  repulsive at origin
+  t = new CAS(-1, 0.5, -1, 0.5, new D() {public float f(float x, float y) {return x*(1 - 2*x - y);}},
+                                    new D() {public float f(float x, float y) {return y*(1 - x - 2*y);}});
+  //*/
   
-  class Test extends CAS {
-    public float dx(float x, float y) { return y; };
-    public float dy(float x, float y) { return y*y + x - x*x; };
-    Test(float x0, float x1, float y0, float y1) { super(x0,x1,y0,y1); };
-  }  
-  t = new Test(-1, 1.5, -1, 1); t.draw();
-  /*//cool spiral!! 
-  class Test extends CAS {
-    public float dx(float x, float y) { return  - y - x*(x*x + y*y); };
-    public float dy(float x, float y) { return x - y*(x*x + y*y); };
-    Test(float x0, float x1, float y0, float y1) { super(x0,x1,y0,y1); };
-  } 
-  t = new Test(-1, 1, -1, 1); t.draw();  */
+  /* //saddle at origin, orbit at (1,0)
+  t = new CAS(-1, 1.5, -1, 1, new D() {public float f(float x, float y) {return y;}},
+                              new D() {public float f(float x, float y) {return y*y + x - x*x; }}); 
+  //*/
+  
+  /* //cool spiral!! 
+  t = new CAS(-1, 1, -1, 1, new D() {public float f(float x, float y) {return - y - x*(x*x + y*y);}},
+                            new D() {public float f(float x, float y) {return x - y*(x*x + y*y);}});
+  // */
   
   /* //ellipses!
-  class Test extends CAS {
-    public float dx(float x, float y) { return y*exp(x*y); };
-    public float dy(float x, float y) { return 1 - x*x*x*x - y*y; };
-    Test(float x0, float x1, float y0, float y1) { super(x0,x1,y0,y1); };
-  }
-  t = new Test(-1.5, 1.5, -1.5, 1.5); t.draw();*/ 
+  t = new CAS(-1.5, 1.5, -1.5, 1.5, new D() {public float f(float x, float y) {return y*exp(x*y);}},
+                                    new D() {public float f(float x, float y) {return 1 - x*x*x*x - y*y;}});
+  //*/ 
+  
+  t.draw();
 }
 
 void draw() {
@@ -118,5 +103,5 @@ void draw() {
 void mousePressed() {
   println("MOUSE PRESSED!!");
   PVector pos = t.untranslate(mouseX, mouseY);
-  t.do_euler_approx(pos.x, pos.y, 0, 1);
+  t.do_euler_approx(pos.x, pos.y, 10);
 }
