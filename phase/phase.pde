@@ -1,3 +1,4 @@
+import javax.swing.*;
 CAS t;
 
 
@@ -52,20 +53,35 @@ class CAS { //CartesianAutonomousSystem
     
   }
   
-  void do_euler_approx(float x, float y, float tmax) {
-     stroke(255,0,0,1);
-     float step = 0.05;
-     //setup bounds - stop trying to approximate all the way to infinity...
-     float xmin = x0 - (x1-x0)*2; float xmax = x1 + (x1-x0)*2;
-     float ymin = y0 - (y1-y0)*2; float ymax = y1 + (y1-y0)*2;
-     PVector pos = new PVector(x,y); PVector new_pos = new PVector(x,y);
-     for(float t = 0; t < tmax && xmin < pos.x && pos.x < xmax && ymin < pos.y && pos.y < ymax; t += step) {
-       new_pos = PVector.add(pos, 
-                             new PVector(step * dx.f(pos.x, pos.y), 
-                                         step * dy.f(pos.x, pos.y)));
-       trline(pos.x, pos.y, new_pos.x, new_pos.y);
-       pos = new_pos;
-     }
+  void drawCritical() {
+    //have a guess at where the critical points could be
+    //take the manhattan metric of the derivatives, put a dot where
+    //this is small
+    float epsilon = 0.01;
+    for(float x = x0; x < x1; x += deltax/10) {
+    for(float y = y0; y < y1; y += deltay/10) {
+      if(abs(dx.f(x,y)) + abs(dy.f(x,y)) < epsilon) { //manhattan metric
+        PVector p = translate(x,y);
+        ellipse(p.x,p.y,2,2);
+      }
+    }}
+  }
+  
+  void doEulerApprox(float x, float y, float tmax) {
+    //approximate trajectory from mouse click using basic euler approx
+    stroke(255,0,0,1);
+    float step = 0.05;
+    //setup bounds - stop trying to approximate all the way to infinity...
+    float xmin = x0 - (x1-x0)*2; float xmax = x1 + (x1-x0)*2;
+    float ymin = y0 - (y1-y0)*2; float ymax = y1 + (y1-y0)*2;
+    PVector pos = new PVector(x,y); PVector new_pos = new PVector(x,y);
+    for(float t = 0; t < tmax && xmin < pos.x && pos.x < xmax && ymin < pos.y && pos.y < ymax; t += step) {
+      new_pos = PVector.add(pos, 
+                            new PVector(step * dx.f(pos.x, pos.y), 
+                                        step * dy.f(pos.x, pos.y)));
+      trline(pos.x, pos.y, new_pos.x, new_pos.y);
+      pos = new_pos;
+    }
   }
   
 }
@@ -73,12 +89,12 @@ class CAS { //CartesianAutonomousSystem
 
 void draw_once() {  
    
-  //attractive critical point at 1/3,1/3  repulsive at origin
-  t = new CAS(-1, 0.5, -1, 0.5, new D() {public float f(float x, float y) {return x*(1 - 2*x - y);}},
+  /*//attractive critical point at 1/3,1/3  repulsive at origin
+  t = new CAS(-0.1, 1, -0.1, 1, new D() {public float f(float x, float y) {return x*(1 - 2*x - y);}},
                                     new D() {public float f(float x, float y) {return y*(1 - x - 2*y);}});
   //*/
   
-  /* //saddle at origin, orbit at (1,0)
+   //saddle at origin, orbit at (1,0)
   t = new CAS(-1, 1.5, -1, 1, new D() {public float f(float x, float y) {return y;}},
                               new D() {public float f(float x, float y) {return y*y + x - x*x; }}); 
   //*/
@@ -93,7 +109,7 @@ void draw_once() {
                                     new D() {public float f(float x, float y) {return 1 - x*x*x*x - y*y;}});
   //*/ 
   
-  t.draw();
+  t.draw(); t.drawCritical();
 }
 
 void draw() {
@@ -103,5 +119,20 @@ void draw() {
 void mousePressed() {
   println("MOUSE PRESSED!!");
   PVector pos = t.untranslate(mouseX, mouseY);
-  t.do_euler_approx(pos.x, pos.y, 10);
+  t.doEulerApprox(pos.x, pos.y, 10);
+}
+
+//save
+void keyPressed() {
+  if
+  SwingUtilities.invokeLater(new Runnable() {
+    public void run() {
+      JFileChooser chooser = new JFileChooser();
+      chooser.setFileFilter(chooser.getAcceptAllFileFilter());
+      int returnVal = chooser.showSaveDialog(null);
+      if (returnVal == JFileChooser.APPROVE_OPTION) {
+        save(chooser.getSelectedFile().getName() + ".png");
+      }
+    }
+  });
 }
